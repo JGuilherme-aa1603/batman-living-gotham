@@ -1,0 +1,58 @@
+# Minecraft runtime / local instance
+Instancia/
+Instancia
+
+# External worldbase / saves
+LosPerrito2.0/
+reference/
+runtime/
+
+# Minecraft saves / regions
+**/saves/
+**/region/
+*.mca
+session.lock
+
+# External/proprietary mod binaries
+*.jar
+
+# External tool checkouts
+external/
+
+# Gradle
+.gradle/
+build/
+**/build/
+
+# Java / IDE
+*.class
+.idea/
+*.iml
+.vscode/
+
+# Python
+.venv/
+venv/
+.tooling/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Node
+node_modules/
+
+# Logs / temporary files
+*.log
+logs/
+tmp/
+temp/
+
+# Local agent/client metadata
+.agents/
+.codex/
+
+# OS / editor temporary files
+.DS_Store
+Thumbs.db
+*~
+*.swp

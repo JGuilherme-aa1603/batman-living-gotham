@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+java17_home="${JAVA17_HOME:-}"
+
+java_major() {
+  "$1/bin/java" -XshowSettings:properties -version 2>&1 \
+    | awk -F'= ' '/java.version =/{split($2, parts, "."); print parts[1]; exit}'
+}
+
+is_java17_home() {
+  [[ -n "$1" && -x "$1/bin/java" && "$(java_major "$1")" == "17" ]]
+}
+
+if ! is_java17_home "$java17_home"; then
+  java17_home=""
+fi
+
+if [[ -z "$java17_home" ]] && is_java17_home "${JAVA_HOME:-}"; then
+  java17_home="$JAVA_HOME"
+fi
+
+if [[ -z "$java17_home" ]]; then
+  for candidate in \
+    /usr/lib/jvm/java-17-openjdk \
+    /usr/lib/jvm/temurin-17-jdk \
+    /usr/lib/jvm/java-17-temurin \
+    /usr/lib/jvm/jdk-17; do
+    if is_java17_home "$candidate"; then
+      java17_home="$candidate"
+      break
+    fi
+  done
+fi
+
+if [[ -z "$java17_home" ]] && command -v archlinux-java >/dev/null 2>&1; then
+  while IFS= read -r candidate_name; do
+    candidate_name="${candidate_name%% *}"
+    candidate="/usr/lib/jvm/$candidate_name"
+    if is_java17_home "$candidate"; then
+      java17_home="$candidate"
+      break
+    fi
+  done < <(archlinux-java status 2>/dev/null | sed -n 's/^  //p')
+fi
+
+if [[ -z "$java17_home" ]]; then
+  echo "Java 17 not found. Set JAVA17_HOME to a JDK 17 installation." >&2
+  exit 1
+fi
+
+export JAVA_HOME="$java17_home"
+export PATH="$JAVA_HOME/bin:$PATH"
+
+if [[ $# -eq 0 ]]; then
+  "$JAVA_HOME/bin/java" -version
+  exit 0
+fi
+
+exec "$@"

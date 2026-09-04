@@ -1,0 +1,2 @@
+amulet-core==1.9.45
+Pillow==12.3.0
