@@ -80,6 +80,11 @@ visual não são apenas capacidades declaradas: funcionaram ponta a ponta.
    interface desejável para produção.
 5. O cliente MCP genérico encerra com código zero quando a resposta contém
    `isError`; automações precisam checar o campo, não só o exit code.
+6. A checagem final de `/health` mostrou **23 sessões ativas** depois de várias
+   chamadas curtas, apesar de o cliente chamar `close()`. Elas devem expirar pelo
+   timeout de 30 minutos, mas o acúmulo indica limpeza tardia ou encerramento
+   incompleto. Reutilizar uma sessão longa e investigar o lifecycle/DELETE do
+   transporte antes de automação intensiva.
 
 Não ocorreu queda do servidor durante a prova. Exportação e captura foram
 estáveis, mas animação e importação ainda exigem guardrails.
