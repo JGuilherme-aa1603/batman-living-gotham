@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  echo "Usage: scripts/create-dev-world DESTINATION" >&2
+  echo "Copies the immutable Los Perrito 1.20.1 baseline using reflinks when supported." >&2
+}
+
+if [[ $# -ne 1 ]]; then
+  usage
+  exit 64
+fi
+
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+project_root="$(realpath -e -- "$script_dir/..")"
+baseline="$(realpath -e -- "$project_root/LosPerrito2.0/Los Perrito")"
+destination="$(realpath -m -- "$1")"
+
+case "$destination/" in
+  "$baseline/"*)
+    echo "Refusing destination inside immutable baseline: $destination" >&2
+    exit 65
+    ;;
+esac
+
+case "$baseline/" in
+  "$destination/"*)
+    echo "Refusing destination that contains immutable baseline: $destination" >&2
+    exit 65
+    ;;
+esac
+
+if [[ -e "$destination" || -L "$destination" ]]; then
+  echo "Refusing to overwrite existing destination: $destination" >&2
+  exit 66
+fi
+
+parent="$(dirname -- "$destination")"
+mkdir -p -- "$parent"
+parent="$(realpath -e -- "$parent")"
+destination="$parent/$(basename -- "$destination")"
+temporary="$destination.partial.$$"
+
+cleanup() {
+  if [[ -d "$temporary" && "$temporary" == "$destination.partial."* ]]; then
+    rm -rf -- "$temporary"
+  fi
+}
+trap cleanup EXIT
+
+echo "Immutable source: $baseline"
+echo "Mutable destination: $destination"
+echo "Copy mode: cp -a --reflink=auto (copy-on-write where the filesystem supports it)"
+
+cp -a --reflink=auto -- "$baseline" "$temporary"
+mv -- "$temporary" "$destination"
+trap - EXIT
+
+echo "DEV world ready: $destination"
+echo "The source baseline was not opened or modified."

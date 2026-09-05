@@ -20,9 +20,11 @@ existente); Living Gotham integra-se a ele sem substituí-lo.
 - `Instancia/` é a instância local do Minecraft usada em desenvolvimento e
   testes. Hoje é um symlink para a instância Prism Launcher; nunca dependa do
   destino absoluto em código versionado.
-- `LosPerrito2.0/` é o worldbase original externo. **Nunca escreva, salve,
-  converta, atualize, abra com API que reescreva `session.lock`, mova ou renomeie
-  esse diretório.**
+- `LosPerrito2.0/Los Perrito` é a baseline de desenvolvimento já convertida
+  manualmente para Forge/Minecraft 1.20.1 (DataVersion 3465). **Nunca escreva,
+  salve, reconverta, atualize, abra com API que reescreva `session.lock`, mova
+  ou renomeie esse diretório.** Não substitua a baseline por caches ou cópias
+  antigas 1.19.2.
 - Qualquer ferramenta que possa escrever segue obrigatoriamente:
   `LosPerrito2.0 -> cópia descartável -> experimento`.
 - Confira que a cópia não resolve para o original antes de escrever. Faça
@@ -40,6 +42,9 @@ existente); Living Gotham integra-se a ele sem substituí-lo.
 - Antes de depender de uma API, teste a versão exata carregada em `Instancia/`.
 - Para Create, prefira APIs públicas e execução com o mod carregado. Não fabrique
   NBT complexo de block entities ou contraptions offline.
+- TaCZ 1.1.8-hotfix é a plataforma candidata de armas. Mantenha sua integração
+  opcional e isolada; TACZ:NPCs e TaCZ Hostiles são referências técnicas, não
+  dependências obrigatórias. Probes de tiro só podem ocorrer em mundo DEV.
 - Para WorldEdit, planeje automação programática de `.schem`: localizar codec,
   ler clipboard, aplicar `AffineTransform`, colar com `EditSession`/`Operation` e
   salvar com writer Sponge. O usuário não deve colar schematics manualmente.
@@ -58,13 +63,33 @@ scripts/with-java17 ./gradlew test
 scripts/with-java17 ./gradlew runClient
 ```
 
-O wrapper Gradle ainda não existe neste bootstrap; quando for criado,
-`./gradlew -version` deve mostrar `JVM: 17.x`. Configure também Java Toolchains
-17 no build. `JAVA17_HOME` pode sobrescrever a descoberta sem gravar path local:
+O wrapper Gradle 8.8 existe na raiz e `./gradlew -version` deve mostrar
+`JVM: 17.x`. O build também usa Java Toolchains 17. `JAVA17_HOME` pode
+sobrescrever a descoberta sem gravar path local:
 
 ```bash
 JAVA17_HOME=/caminho/do/jdk17 scripts/with-java17 ./gradlew build
 ```
+
+O Forge skeleton usa ForgeGradle 6.x, wrapper Gradle 8.8 e Forge 47.4.10. A
+execução integrada numa cópia DEV pode ser iniciada por:
+
+```bash
+scripts/create-dev-world 'runtime/forge/saves/Los Perrito DEV'
+scripts/with-java17 ./gradlew runClient \
+  --args='--quickPlaySingleplayer "Los Perrito DEV"'
+```
+
+Os probes automáticos que escrevem são opt-in e só passam no gate de mundo DEV:
+
+```bash
+scripts/with-java17 ./gradlew runClient \
+  -PlivingGothamAutoProbe=true \
+  --args='--quickPlaySingleplayer "Los Perrito DEV"'
+```
+
+Use `-PlivingGothamAutoProbe=verify` para reabrir e consultar persistência sem
+executar os probes de escrita.
 
 ## Git e dependências locais
 
@@ -77,6 +102,8 @@ JAVA17_HOME=/caminho/do/jdk17 scripts/with-java17 ./gradlew build
   configs próprias e fontes Blockbench `.bbmodel` produzidas pelo projeto.
 - Prefira `git add` seletivo. Não publique remotos nem altere identidade Git
   global sem autorização.
+- Dependências mod locais de desenvolvimento são resolvidas diretamente de
+  `Instancia/mods` (ou de `LIVING_GOTHAM_MODS_DIR`), nunca copiadas para o Git.
 
 ## Assets, licenças e Blockbench
 
@@ -122,5 +149,10 @@ git status --ignored
 - `docs/research/BLOCKBENCH_MCP_REPORT.md`
 - `docs/research/AMULET_REPORT.md`
 - `docs/research/RUNTIME_INTEGRATION_REPORT.md`
+- `docs/research/WORLD_BASELINE_REPORT.md`
+- `docs/research/YOFADDA_INTEGRATION_REPORT.md`
+- `docs/research/WORLDEDIT_INTEGRATION_REPORT.md`
+- `docs/research/CREATE_INTEGRATION_REPORT.md`
+- `docs/research/TACZ_INTEGRATION_REPORT.md`
 
 Atualize esses relatórios quando versões, runtime ou evidência real mudarem.

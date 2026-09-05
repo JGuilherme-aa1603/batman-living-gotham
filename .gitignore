@@ -15,6 +15,7 @@ session.lock
 
 # External/proprietary mod binaries
 *.jar
+!gradle/wrapper/gradle-wrapper.jar
 
 # External tool checkouts
 external/
