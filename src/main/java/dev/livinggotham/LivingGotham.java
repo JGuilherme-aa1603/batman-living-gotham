@@ -4,9 +4,11 @@ import com.mojang.logging.LogUtils;
 import dev.livinggotham.debug.AutoProbeEvents;
 import dev.livinggotham.debug.ProbeEvents;
 import dev.livinggotham.debug.TaczProbeEvents;
+import dev.livinggotham.entity.ModEntities;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.slf4j.Logger;
 
 @Mod(LivingGotham.MOD_ID)
@@ -15,6 +17,7 @@ public final class LivingGotham {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public LivingGotham() {
+        ModEntities.register(FMLJavaModLoadingContext.get().getModEventBus());
         MinecraftForge.EVENT_BUS.register(ProbeEvents.class);
         if (Boolean.getBoolean("livinggotham.autoProbe")) {
             MinecraftForge.EVENT_BUS.register(AutoProbeEvents.class);

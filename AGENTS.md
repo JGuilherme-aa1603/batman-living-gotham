@@ -91,6 +91,22 @@ scripts/with-java17 ./gradlew runClient \
 Use `-PlivingGothamAutoProbe=verify` para reabrir e consultar persistência sem
 executar os probes de escrita.
 
+Os probes da Fase 1.1 usam três execuções separadas sobre a mesma cópia DEV:
+
+```bash
+scripts/with-java17 ./gradlew runClient -PlivingGothamAutoProbe=phase11 \
+  --args='--quickPlaySingleplayer "Los Perrito Phase 1.1 DEV"'
+scripts/with-java17 ./gradlew runClient -PlivingGothamAutoProbe=phase11-verify \
+  --args='--quickPlaySingleplayer "Los Perrito Phase 1.1 DEV"'
+scripts/with-java17 ./gradlew runClient -PlivingGothamAutoProbe=phase11-clean-verify \
+  --args='--quickPlaySingleplayer "Los Perrito Phase 1.1 DEV"'
+```
+
+O primeiro escreve o padrão WorldEdit e executa TaCZ; o segundo prova reopen e
+limpa o padrão; o terceiro prova que a limpeza persistiu. Os comandos
+`/lgprobe yofadda blood-setup`, `/lgprobe tacz entity` e
+`/lgprobe worldedit persistence ...` são DEV-only.
+
 ## Git e dependências locais
 
 - A raiz deste arquivo é a única raiz Git. Não crie repositórios em subpastas.

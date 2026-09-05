@@ -22,7 +22,12 @@ public final class ProbeCommands {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("lgprobe")
                 .then(Commands.literal("status").executes(context -> status(context.getSource())))
-                .then(Commands.literal("yofadda").executes(context -> yofadda(context.getSource())))
+                .then(Commands.literal("yofadda")
+                        .executes(context -> yofadda(context.getSource()))
+                        .then(Commands.literal("forensic-kit").requires(source -> source.hasPermission(2))
+                                .executes(context -> forensicKit(context.getSource())))
+                        .then(Commands.literal("blood-setup").requires(source -> source.hasPermission(2))
+                                .executes(context -> bloodSetup(context.getSource()))))
                 .then(Commands.literal("forensics")
                         .executes(context -> forensics(context.getSource()))
                         .then(Commands.literal("create-footprint")
@@ -32,13 +37,32 @@ public final class ProbeCommands {
                         .executes(context -> worldEditStatus(context.getSource()))
                         .then(Commands.literal("paste")
                                 .requires(source -> source.hasPermission(2))
-                                .executes(context -> worldEditPaste(context.getSource()))))
+                                .executes(context -> worldEditPaste(context.getSource())))
+                        .then(Commands.literal("persistence")
+                                .then(Commands.literal("setup").requires(source -> source.hasPermission(2))
+                                        .executes(context -> worldEditPersistence(context.getSource(), "setup")))
+                                .then(Commands.literal("verify").requires(source -> source.hasPermission(2))
+                                        .executes(context -> worldEditPersistence(context.getSource(), "verify")))
+                                .then(Commands.literal("cleanup").requires(source -> source.hasPermission(2))
+                                        .executes(context -> worldEditPersistence(context.getSource(), "cleanup")))
+                                .then(Commands.literal("verify-clean").requires(source -> source.hasPermission(2))
+                                        .executes(context -> worldEditPersistence(context.getSource(), "verify-clean")))))
                 .then(Commands.literal("create").executes(context -> create(context.getSource())))
                 .then(Commands.literal("tacz")
                         .executes(context -> taczStatus(context.getSource()))
                         .then(Commands.literal("fire")
                                 .requires(source -> source.hasPermission(2))
-                                .executes(context -> taczFire(context.getSource())))));
+                                .executes(context -> taczEntity(context.getSource())))
+                        .then(Commands.literal("entity").requires(source -> source.hasPermission(2))
+                                .executes(context -> taczEntity(context.getSource())))
+                        .then(Commands.literal("persistence").requires(source -> source.hasPermission(2))
+                                .executes(context -> taczPersistence(context.getSource())))
+                        .then(Commands.literal("accuracy").requires(source -> source.hasPermission(2))
+                                .executes(context -> taczAccuracy(context.getSource())))
+                        .then(Commands.literal("damage").requires(source -> source.hasPermission(2))
+                                .executes(context -> taczDamage(context.getSource())))
+                        .then(Commands.literal("suppressor").requires(source -> source.hasPermission(2))
+                                .executes(context -> taczSuppressor(context.getSource())))));
     }
 
     private static int status(CommandSourceStack source) {
@@ -77,6 +101,9 @@ public final class ProbeCommands {
             reply(source, "Forensics | scanner=" + onOff(state.scanner())
                     + " | detective_mode=" + onOff(state.detectiveMode())
                     + " | blood_in_sight=" + onOff(state.bloodInSight())
+                    + " | button_pressed=" + state.buttonPressed()
+                    + " | button_ticks=" + state.buttonTicks()
+                    + " | head=" + player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.HEAD)
                     + " | footprints_in_chunk=" + YoFaddaIntegration.nearbyFootprintCount(player)
                     + " | random_crime=" + onOff(YoFaddaIntegration.randomCrimeEnabled(player)));
             return 1;
@@ -84,6 +111,36 @@ public final class ProbeCommands {
             reply(source, "Yo Fadda player capability is absent.");
             return 0;
         });
+    }
+
+    private static int forensicKit(CommandSourceStack source) {
+        try {
+            ServerPlayer player = source.getPlayerOrException();
+            DevWorldSafety.requireDisposableDevWorld(player.serverLevel());
+            YoFaddaIntegration.equipClassicForensicKit(player);
+            reply(source, "equipped genuine classic Batsuit and supplied genuine Sample Vial; hold Z for >=10 ticks");
+            return 1;
+        } catch (Exception exception) {
+            LivingGotham.LOGGER.error("Yo Fadda forensic kit setup failed", exception);
+            reply(source, "Forensic kit setup failed: " + exception.getMessage());
+            return 0;
+        }
+    }
+
+    private static int bloodSetup(CommandSourceStack source) {
+        try {
+            ServerPlayer player = source.getPlayerOrException();
+            DevWorldSafety.requireDisposableDevWorld(player.serverLevel());
+            var setup = YoFaddaIntegration.createBloodSetup(player);
+            reply(source, "genuine red blood placed at " + setup.evidence().toShortString()
+                    + "; right-click support block " + setup.support().toShortString() + " with mainhand Sample Vial"
+                    + " | temporary_support=" + setup.temporarySupportCreated());
+            return 1;
+        } catch (Exception exception) {
+            LivingGotham.LOGGER.error("Yo Fadda blood setup failed", exception);
+            reply(source, "Blood setup failed: " + exception.getMessage());
+            return 0;
+        }
     }
 
     private static int createFootprint(CommandSourceStack source) {
@@ -131,6 +188,30 @@ public final class ProbeCommands {
         }
     }
 
+    private static int worldEditPersistence(CommandSourceStack source, String action) {
+        if (!loaded("worldedit")) {
+            return unavailable(source, "WorldEdit");
+        }
+        try {
+            ServerPlayer player = source.getPlayerOrException();
+            var result = switch (action) {
+                case "setup" -> WorldEditIntegration.setupPersistenceProbe(player.serverLevel(), player.blockPosition());
+                case "verify" -> WorldEditIntegration.verifyPersistenceProbe(player.serverLevel());
+                case "cleanup" -> WorldEditIntegration.cleanupPersistenceProbe(player.serverLevel());
+                case "verify-clean" -> WorldEditIntegration.verifyCleanPersistenceProbe(player.serverLevel());
+                default -> throw new IllegalArgumentException("unknown action " + action);
+            };
+            reply(source, "WorldEdit persistence " + action + " | origin=" + result.origin().toShortString()
+                    + " | stage=" + result.stage() + " | changed=" + result.changed()
+                    + " | matches=" + result.verification().matches() + " | states=" + result.verification().actual());
+            return result.verification().matches() ? 1 : 0;
+        } catch (Exception exception) {
+            LivingGotham.LOGGER.error("WorldEdit persistence probe failed", exception);
+            reply(source, "WorldEdit persistence " + action + " failed: " + exception.getMessage());
+            return 0;
+        }
+    }
+
     private static int create(CommandSourceStack source) {
         if (!loaded("create")) {
             return unavailable(source, "Create");
@@ -164,22 +245,59 @@ public final class ProbeCommands {
         return snapshot.probeGunPresent() ? 1 : 0;
     }
 
-    private static int taczFire(CommandSourceStack source) {
+    private static int taczEntity(CommandSourceStack source) {
         if (!loaded(TaczIntegration.MOD_ID)) {
             return unavailable(source, "TaCZ");
         }
         try {
             ServerPlayer player = source.getPlayerOrException();
-            var probe = TaczIntegration.startDevShot(player);
-            reply(source, "TaCZ DEV shot armed | shooter=" + probe.shooterId()
+            var probe = TaczIntegration.startDevEntityCycle(player);
+            reply(source, "TaCZ Living Gotham DEV entity armed | shooter=" + probe.shooterId()
                     + " | target=" + probe.targetId()
-                    + " | gun=" + probe.gunId()
-                    + " | the server log will record shoot/fire/projectile/hit events");
+                    + " | gun=" + probe.gunId() + " | sequence=3 shots -> reload -> shoot");
             return 1;
         } catch (Exception exception) {
             LivingGotham.LOGGER.error("TaCZ firing probe failed", exception);
             reply(source, "TaCZ firing probe failed: " + exception.getClass().getSimpleName()
                     + ": " + exception.getMessage());
+            return 0;
+        }
+    }
+
+    private static int taczPersistence(CommandSourceStack source) {
+        try {
+            ServerPlayer player = source.getPlayerOrException();
+            var result = TaczIntegration.inspectPersisted(player);
+            reply(source, "TaCZ persisted DEV entities=" + result.count() + " | " + result.detail());
+            return result.count() > 0 ? 1 : 0;
+        } catch (Exception exception) {
+            reply(source, "TaCZ persistence inspection failed: " + exception.getMessage());
+            return 0;
+        }
+    }
+
+    private static int taczAccuracy(CommandSourceStack source) {
+        return runTacz(source, "accuracy", TaczIntegration::startAccuracyProbe);
+    }
+
+    private static int taczDamage(CommandSourceStack source) {
+        return runTacz(source, "damage", TaczIntegration::startDamageProbe);
+    }
+
+    private static int taczSuppressor(CommandSourceStack source) {
+        return runTacz(source, "suppressor", TaczIntegration::startSuppressorProbe);
+    }
+
+    private static int runTacz(CommandSourceStack source, String name,
+                               java.util.function.Consumer<ServerPlayer> probe) {
+        try {
+            ServerPlayer player = source.getPlayerOrException();
+            probe.accept(player);
+            reply(source, "TaCZ " + name + " runtime probe started; inspect [LG_PROBE] server evidence");
+            return 1;
+        } catch (Exception exception) {
+            LivingGotham.LOGGER.error("TaCZ " + name + " probe failed", exception);
+            reply(source, "TaCZ " + name + " probe failed: " + exception.getMessage());
             return 0;
         }
     }

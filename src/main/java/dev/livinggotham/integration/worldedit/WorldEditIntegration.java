@@ -14,6 +14,10 @@ import com.sk89q.worldedit.world.block.BlockTypes;
 import dev.livinggotham.debug.DevWorldSafety;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.block.Blocks;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /** Public WorldEdit API boundary. Writes must only run in a disposable DEV world. */
 public final class WorldEditIntegration {
@@ -51,5 +55,120 @@ public final class WorldEditIntegration {
             Operations.complete(operation);
             return editSession.getBlockChangeCount();
         }
+    }
+
+    public static PersistenceResult setupPersistenceProbe(ServerLevel level, BlockPos near) throws WorldEditException {
+        requireDev(level);
+        BlockPos origin = findAirCube(level, near);
+        int changed = pasteTinyProbe(level, origin);
+        Verification verification = verifyPattern(level, origin, false);
+        data(level).set(origin, level.dimension().location().toString(), "pasted");
+        return new PersistenceResult(origin, changed, verification, "pasted");
+    }
+
+    public static PersistenceResult verifyPersistenceProbe(ServerLevel level) {
+        requireDev(level);
+        WorldEditProbeData data = data(level);
+        requireSameDimension(level, data);
+        Verification verification = verifyPattern(level, requireOrigin(data), false);
+        return new PersistenceResult(data.origin(), 0, verification, data.stage());
+    }
+
+    public static PersistenceResult cleanupPersistenceProbe(ServerLevel level) {
+        requireDev(level);
+        WorldEditProbeData data = data(level);
+        requireSameDimension(level, data);
+        BlockPos origin = requireOrigin(data);
+        Verification before = verifyPattern(level, origin, false);
+        int changed = 0;
+        for (BlockPos pos : positions(origin)) {
+            if (level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3)) {
+                changed++;
+            }
+        }
+        Verification after = verifyPattern(level, origin, true);
+        data.set(origin, level.dimension().location().toString(), "cleaned");
+        return new PersistenceResult(origin, changed,
+                new Verification(before.matches() && after.matches(), before.actual() + " -> cleanup=" + after.actual()),
+                "cleaned");
+    }
+
+    public static PersistenceResult verifyCleanPersistenceProbe(ServerLevel level) {
+        requireDev(level);
+        WorldEditProbeData data = data(level);
+        requireSameDimension(level, data);
+        Verification verification = verifyPattern(level, requireOrigin(data), true);
+        return new PersistenceResult(data.origin(), 0, verification, data.stage());
+    }
+
+    private static Verification verifyPattern(ServerLevel level, BlockPos origin, boolean expectAir) {
+        List<String> actual = new ArrayList<>();
+        boolean matches = true;
+        String[] expected = expectAir
+                ? new String[]{"minecraft:air", "minecraft:air", "minecraft:air", "minecraft:air",
+                "minecraft:air", "minecraft:air", "minecraft:air", "minecraft:air"}
+                : new String[]{"minecraft:gold_block", "minecraft:black_concrete",
+                "minecraft:black_concrete", "minecraft:gold_block",
+                "minecraft:glass", "minecraft:glass", "minecraft:glass", "minecraft:glass"};
+        List<BlockPos> positions = positions(origin);
+        for (int index = 0; index < positions.size(); index++) {
+            String id = net.minecraftforge.registries.ForgeRegistries.BLOCKS
+                    .getKey(level.getBlockState(positions.get(index)).getBlock()).toString();
+            actual.add(positions.get(index).toShortString() + "=" + id);
+            matches &= expected[index].equals(id);
+        }
+        return new Verification(matches, String.join(", ", actual));
+    }
+
+    private static List<BlockPos> positions(BlockPos origin) {
+        List<BlockPos> positions = new ArrayList<>(8);
+        for (int y = 0; y <= 1; y++) {
+            for (int z = 0; z <= 1; z++) {
+                for (int x = 0; x <= 1; x++) {
+                    positions.add(origin.offset(x, y, z));
+                }
+            }
+        }
+        return positions;
+    }
+
+    private static BlockPos findAirCube(ServerLevel level, BlockPos near) {
+        for (int dy = 2; dy <= 20; dy++) {
+            BlockPos candidate = near.offset(4, dy, 4);
+            if (positions(candidate).stream().allMatch(pos -> level.getBlockState(pos).isAir())) {
+                return candidate;
+            }
+        }
+        throw new IllegalStateException("no empty 2x2x2 probe volume found near player");
+    }
+
+    private static WorldEditProbeData data(ServerLevel level) {
+        return level.getDataStorage().computeIfAbsent(WorldEditProbeData::load, WorldEditProbeData::new,
+                WorldEditProbeData.ID);
+    }
+
+    private static BlockPos requireOrigin(WorldEditProbeData data) {
+        if (data.origin() == null) {
+            throw new IllegalStateException("WorldEdit persistence probe has not been set up");
+        }
+        return data.origin();
+    }
+
+    private static void requireSameDimension(ServerLevel level, WorldEditProbeData data) {
+        if (!data.dimension().equals(level.dimension().location().toString())) {
+            throw new IllegalStateException("probe belongs to dimension " + data.dimension());
+        }
+    }
+
+    private static void requireDev(ServerLevel level) {
+        if (!DevWorldSafety.isDisposableDevWorld(level)) {
+            throw new IllegalStateException("refusing WorldEdit persistence probe outside disposable DEV world");
+        }
+    }
+
+    public record Verification(boolean matches, String actual) {
+    }
+
+    public record PersistenceResult(BlockPos origin, int changed, Verification verification, String stage) {
     }
 }

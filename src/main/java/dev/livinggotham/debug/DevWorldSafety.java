@@ -39,4 +39,10 @@ public final class DevWorldSafety {
             return false;
         }
     }
+
+    public static void requireDisposableDevWorld(ServerLevel level) {
+        if (!isDisposableDevWorld(level)) {
+            throw new IllegalStateException("refusing mutation outside a disposable DEV world");
+        }
+    }
 }

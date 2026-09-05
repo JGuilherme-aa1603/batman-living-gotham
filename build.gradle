@@ -124,6 +124,13 @@ dependencies {
     localModCoordinates.each { coordinates ->
         implementation fg.deobf(coordinates)
     }
+
+    testImplementation platform('org.junit:junit-bom:5.10.3')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
 }
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }

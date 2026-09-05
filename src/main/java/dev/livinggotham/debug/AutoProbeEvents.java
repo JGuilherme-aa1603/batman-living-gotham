@@ -17,8 +17,7 @@ import java.util.UUID;
  * It invokes the real Brigadier commands after a player joins and never runs in normal dev play.
  */
 public final class AutoProbeEvents {
-    private static final boolean VERIFY_ONLY = "verify".equalsIgnoreCase(
-            System.getProperty("livinggotham.autoProbeMode", "false"));
+    private static final String MODE = System.getProperty("livinggotham.autoProbeMode", "false");
     private static final Map<UUID, Long> START_AT = new HashMap<>();
     private static final Set<UUID> EXECUTED = new HashSet<>();
     private static final Set<UUID> SAVED = new HashSet<>();
@@ -49,7 +48,23 @@ public final class AutoProbeEvents {
             execute(source, "lgprobe create");
             execute(source, "lgprobe worldedit");
             execute(source, "lgprobe tacz");
-            if (!VERIFY_ONLY) {
+            if (MODE.equalsIgnoreCase("phase11")) {
+                execute(source, "lgprobe yofadda forensic-kit");
+                execute(source, "lgprobe yofadda blood-setup");
+                execute(source, "lgprobe worldedit persistence setup");
+                execute(source, "lgprobe tacz entity");
+                execute(source, "lgprobe tacz accuracy");
+                execute(source, "lgprobe tacz damage");
+                execute(source, "lgprobe tacz suppressor");
+                LivingGotham.LOGGER.info("[LG_PROBE] PHASE11_MANUAL_ACTIONS_READY hold_z_then_release_then_press_z; right_click_logged_support_with_sample_vial");
+            } else if (MODE.equalsIgnoreCase("phase11-verify")) {
+                execute(source, "lgprobe worldedit persistence verify");
+                execute(source, "lgprobe tacz persistence");
+                execute(source, "lgprobe worldedit persistence cleanup");
+            } else if (MODE.equalsIgnoreCase("phase11-clean-verify")) {
+                execute(source, "lgprobe worldedit persistence verify-clean");
+                execute(source, "lgprobe tacz persistence");
+            } else if (!MODE.equalsIgnoreCase("verify")) {
                 execute(source, "lgprobe forensics create-footprint");
                 execute(source, "lgprobe forensics");
                 execute(source, "lgprobe worldedit paste");
@@ -62,7 +77,7 @@ public final class AutoProbeEvents {
         }
 
         if (EXECUTED.contains(player.getUUID()) && !SAVED.contains(player.getUUID())
-                && now - started >= 180L) {
+                && now - started >= (MODE.equalsIgnoreCase("phase11") ? 600L : 180L)) {
             boolean saved = player.getServer().saveEverything(false, true, true);
             SAVED.add(player.getUUID());
             LivingGotham.LOGGER.info("[LG_PROBE] AUTOMATIC_DEV_PROBES_COMPLETE world_saved={}", saved);
