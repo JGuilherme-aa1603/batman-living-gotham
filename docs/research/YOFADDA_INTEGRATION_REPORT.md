@@ -39,11 +39,10 @@ assets. Todas as referências diretas ficam em `integration/yofadda`.
 - **Authority:** **DECOMPILED** — estado persistido/sincronizado por capability;
   a ativação deriva de procedimentos/teclas e equipamento válido.
 - **Probe result:** **RUNTIME** — `/lgprobe forensics` reportou scanner `OFF`,
-  Detective Mode `OFF` e BloodInSight `OFF`. O observador automático também
-  registrou a transição inicial `false` no server.
-- **Scanner ON:** **NOT CONFIRMED** — não foi forçado e não houve interação
-  manual com traje/tecla durante o probe. Portanto o requisito OFF/ON ainda está
-  parcialmente aberto.
+  Detective Mode `OFF` e BloodInSight `OFF`; depois, o fluxo normal com Batsuit
+  clássico e keybind Z produziu `OFF -> ON -> OFF` no server.
+- **Scanner ON:** **RUNTIME CONFIRMED** — ativou com `buttonTicks=10`, sem o
+  Living Gotham forçar ou escrever qualquer campo da capability.
 - **Version-break risk:** alto para nomes de campos/classes MCreator; usar
   adapter, checagem de presença e teste de regressão na versão exata.
 
@@ -109,9 +108,9 @@ Living Gotham registra `RightClickBlock` e observa a mudança de inventário no
 tick seguinte. Isso é **FORGE_EVENT + PUBLIC_REGISTRY** e evita chamar
 procedimentos internos.
 
-**RUNTIME:** os três itens foram encontrados. **NOT CONFIRMED:** uma coleta real
-de sangue não foi encenada nesta fase; logo a detecção ponta a ponta
-objective -> coleta permanece pendente.
+**RUNTIME (Phase 1.1):** os três itens foram encontrados e uma coleta real foi
+executada. Living Gotham observou `sample_vial -> red_blood_sample` server-side
+um tick após `RightClickBlock` e o menu/tag completo no tick seguinte.
 
 ## Sample Vial
 
@@ -140,7 +139,8 @@ Não foi encontrado um estado persistente e distinto de “DNA analysis
 completed”. O que outro mod pode observar hoje é menu/item/NBT/capability.
 Classificação: **PUBLIC_REGISTRY/PUBLIC_CLASS** para leitura superficial;
 sem evento semântico, integração profunda é **ACCESSIBLE_INTERNAL** ou exige um
-hook ainda não justificado. **NOT CONFIRMED:** análise real no runtime.
+hook ainda não justificado. **RUNTIME (Phase 1.1):** o percurso real chegou a
+`dna_potion_scans`, com a amostra e seu NBT preservados em `vial_transfer`.
 
 ## Random Crimes
 
@@ -230,7 +230,8 @@ risco não são justificados antes de definir objetivos mínimos.
 ## Compatibility risks
 
 - nomes/packages/campos MCreator podem mudar sem semver de API;
-- scanner ON e fluxos blood/DNA ainda precisam de prova runtime manual;
+- scanner, blood e DNA dependem de campos/menus MCreator sem contrato de API e
+  precisam de regressão obrigatória a cada versão;
 - assets/sounds/tags quebrados foram observados no mod real;
 - categorias MISC em entidades `Monster` podem afetar spawn/despawn e filtros;
 - footprints expiram e não guardam entidade de origem;
@@ -239,8 +240,85 @@ risco não são justificados antes de definir objetivos mínimos.
 ## Overall conclusion
 
 Há uma integração pragmática possível sem reflection/mixin para leitura de
-scanner, footprints e registries. Leitura, criação e persistência de footprint
-foram comprovadas em runtime; scanner OFF e Random Crime ON foram comprovados.
-Scanner ON, coleta de sangue e conclusão de DNA ainda não foram provados e
-devem permanecer marcados como pendentes. Manter Yo Fadda atrás de adapter e
-adicionar um teste de compatibilidade obrigatório a cada troca de JAR.
+scanner, footprints e registries. Leitura, criação e persistência de footprint,
+scanner OFF/ON/OFF, coleta real de sangue e o percurso DNA até a tela de
+resultado foram comprovados em runtime. Como não existe evento semântico de
+conclusão de DNA, manter Yo Fadda atrás de adapter e adicionar teste de
+compatibilidade obrigatório a cada troca de JAR.
+
+## Phase 1.1 probe status
+
+### Scanner observer and legitimate activation path
+
+**RUNTIME:** o observer Living Gotham registra separadamente CLIENT/SERVER e
+somente transições de `DetectiveMode`, `ForensicScanner`, `BloodInSight` e
+`DetectiveModeButtonPressed`, incluindo tick, jogador e os quatro slots de
+armadura. `/lgprobe yofadda forensic-kit`, protegido por `DevWorldSafety`,
+equipou itens reais `batsuit_*`; não escreveu capability.
+
+**DECOMPILED:** a ação normal é a keybind Z, “Detective Mode (Hold For
+Forensic)”. Com Batsuit clássico completo, manter Z por pelo menos 10 ticks
+ativa scanner; pressionar novamente desliga Detective Mode/scanner.
+
+**RUNTIME CONFIRMED:** uma pessoa acionou a keybind Z pelo fluxo normal. O
+server registrou `DetectiveMode false -> true` no tick `55135020` e
+`ForensicScanner false -> true` no tick `55135029`, com `buttonTicks=10` e o
+Batsuit clássico completo. Um segundo Z produziu `ForensicScanner true ->
+false` no tick `55135124`; ciclos posteriores repetiram o resultado. Nenhum
+campo da capability foi escrito pelo Living Gotham.
+
+### BloodInSight authority correction
+
+**DECOMPILED:** `ForensicDNAScanConditionProcedure` é invocado pelo overlay
+cliente Beyond. Ele altera a capability do `LocalPlayer`; o método de sync só
+envia quando a entidade é `ServerPlayer`. Portanto há forte evidência de que
+`BloodInSight` real é client-local nessa versão, apesar do campo também existir
+na capability server. O observer agora mede ambos os lados.
+
+**NOT CONFIRMED:** sem scanner Beyond ON e mira manual na evidência não houve
+transição runtime. Não tratar `BloodInSight` como server-authoritative.
+
+### Sample Vial setup and collection
+
+**RUNTIME:** `/lgprobe yofadda blood-setup` colocou o bloco real
+`batman_mod:red_blood_drop` numa cópia DEV em `-1137 83 -829`, sobre suporte
+temporário criado apenas em ar em `-1137 82 -829`, e entregou o Sample Vial real
+na mão. Nenhuma procedure MCreator foi chamada pelo Living Gotham.
+
+Uma pessoa clicou legitimamente no suporte com o vial. Living Gotham observou
+`RightClickBlock` server-side no tick `55137755`; no tick seguinte o item era
+`batman_mod:red_blood_sample`, ainda sem tag. No tick `55137757` abriu
+`batman_mod:sample_label` e a stack continha:
+
+```nbt
+{Age:"DEV",Health:"20",Height:"1.80",Name:"Living Gotham DEV Donor",Potions:"none"}
+```
+
+O usuário quebrou o suporte temporário depois da coleta; isso não afeta a
+prova, ocorreu somente na cópia descartável e não tocou a baseline. A detecção
+usa evento Forge + ids de registry + transição de inventário, sem chamar a
+procedure geradora.
+
+### DNA observability
+
+**DECOMPILED:** não há `DNAAnalysisCompletedEvent`. O fluxo usa menus
+`batman_mod:dna_scan_page` e `batman_mod:dna_potion_scans`, slot 0 e o campo
+`vial_transfer`, que é preenchido e restaurado em ticks subsequentes. O observer
+registra menu open/close, slots, mainhand e `vial_transfer` server-side.
+
+**RUNTIME:** com a amostra real, uma pessoa percorreu a interface normal:
+`login_page -> landing_page -> dna_scan_page -> dna_potion_scans`. No tick
+`55139326`, a tela final abriu server-side com `vial_transfer` igual a
+`batman_mod:red_blood_sample` e as cinco tags preservadas. Ao voltar, a amostra
+continuou em `vial_transfer`; não apareceu novo estado distinto que signifique
+“concluído”.
+
+Classificação de conclusão: `[ ] PUBLIC_EVENT`, `[x] REGISTRY + STATE
+TRANSITION`, `[x] MENU/INVENTORY HEURISTIC`, `[x] ACCESSIBLE_INTERNAL`,
+`[x] runtime flow proven`. Não há base para adicionar hook/mixin nesta fase.
+
+**BUG RUNTIME DO YO FADDA:** as telas funcionam, mas o cliente registrou
+`FileNotFoundException` para
+`batman_mod:textures/screens/dna_scan_page.png` e
+`batman_mod:textures/screens/dna_potion_scans.png`. O problema pertence ao JAR
+1.0.9 carregado; Living Gotham não deve copiar ou fabricar esses assets.

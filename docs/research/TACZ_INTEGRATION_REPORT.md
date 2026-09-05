@@ -197,3 +197,109 @@ API pública cobre registry, gun state, disparo por entidade, projectile e dano
 sem reflection/mixin próprio. A próxima investigação deve construir uma
 entidade DEV mínima com behavior de mirar/recarregar/disparar, medir precisão e
 testar suppressor, ainda sem integrá-la ao Crime System.
+
+## Phase 1.1 runtime closure
+
+### Custom DEV entity and targeting
+
+**RUNTIME.** `living_gotham:gun_test` / `LivingGothamGunTestEntity` é uma
+entidade técnica própria, não um criminoso. Ela possui renderer temporário de
+zombie, inventário Forge `ITEM_HANDLER` de um slot e estado persistente do
+probe. Um controlador server-side fixa um alvo Zombie, recalcula yaw/pitch,
+chama `initialData`, `draw`, `aim(true)` e `shoot` por `IGunOperator`.
+
+Não foram usados FakePlayer, TACZ:NPCs, TaCZ Hostiles, reflection ou mixin do
+Living Gotham. A aquisição é propositalmente mínima: alvo criado pelo probe,
+sem cover, squad, patrulha ou qualquer IA criminal.
+
+### Shooting and reload
+
+**RUNTIME.** A Glock começou com duas munições no magazine e uma na câmara
+(três tiros reais no total), enquanto o inventário próprio continha 30 unidades
+reais de `tacz:9mm`:
+
+```text
+shot 1 -> SUCCESS
+shot 2 -> SUCCESS
+shot 3 -> SUCCESS, gun_ammo=0, barrel=false
+shot 4 attempt -> NO_AMMO
+GunReloadEvent server, canceled=false
+EMPTY_RELOAD_FEEDING -> EMPTY_RELOAD_FINISHING -> NOT_RELOADING
+reload elapsed=38 ticks
+gun_ammo=16, reserve inventory=13
+shot after reload -> SUCCESS, gun_ammo=15
+```
+
+A recarga consumiu 17 cartuchos do capability Forge real. Não foi usado dummy
+ammo nem munição infinita. `GunFinishReloadEvent` não carrega a entidade, então
+o boundary confiável para um NPC é `GunReloadEvent` +
+`IGunOperator.getSynReloadState()` + estado `IGun` server-side.
+
+### Persistence
+
+**RUNTIME, SAVE/REOPEN.** Após save, fechamento e nova execução, o shooter de
+recarga reapareceu com o mesmo UUID, profile `reload`, Glock, 15 no magazine,
+round na câmara, 13 munições no inventário e Mirage instalado. O marcador de
+ciclo completo também persistiu. Target e estado transitório de aquisição não
+são persistidos pelo controlador, por design.
+
+### Accuracy
+
+**RUNTIME, 20 tiros por perfil.** `AttachmentPropertyEvent` substituiu via API
+pública experimental todos os valores de `GunProperties.INACCURACY` e
+`AIM_INACCURACY`. O desvio foi medido entre a direção ideal e
+`EntityKineticBullet.getDeltaMovement()`; esses projéteis de medição foram
+descartados antes de dano:
+
+| Configuração | Média | Máximo |
+|---|---:|---:|
+| 0,05 | 0,0275° | 0,0496° |
+| 12,0 | 6,4809° | 11,5402° |
+
+**Conclusão:** precisão por entidade/stack é controlável e quantitativamente
+previsível. O evento é público, mas marcado experimental pelo TaCZ; revalidar
+na troca de versão.
+
+### Damage tuning
+
+**RUNTIME.** `EntityHurtByGunEvent.Pre` no server identificou a entidade e
+alterou `baseAmount` por profile: 1,0 manteve 7,0; 0,5 produziu 3,5. Os eventos
+Post correspondentes observaram 10,5 e 5,25 em headshots equivalentes, mantendo
+exatamente a razão 2:1. O caminho é server-authoritative e não depende de NBT
+de dano fabricado.
+
+### Suppressor
+
+**RUNTIME.** A mesma Glock foi comparada sem muzzle e com
+`tacz:muzzle_silencer_mirage`:
+
+```text
+unsuppressed: muzzle=tacz:empty, SILENCE=(64,false)
+suppressed:   muzzle=tacz:muzzle_silencer_mirage, SILENCE=(40,true)
+```
+
+Ambas emitiram `GunShootEvent`, `GunFireEvent`, projectile `tacz:9mm` e hit
+normalmente. A mudança auditiva foi ouvida no cliente, mas não foi capturada por
+medição de áudio; a identificação técnica é conclusiva. TaCZ não define a
+semântica futura de percepção dos NPCs Living Gotham.
+
+### Visual/animation status
+
+**RUNTIME + implementation.** O renderer temporário exibe corpo/texture vanilla
+de zombie e `ItemInHandLayer`; a entidade segura a arma e gira para o alvo. O
+TaCZ executa tiro e recarga logicamente, mas PlayerAnimator cobre jogadores e
+não fornece pose/recoil/reload correta a esse mob. Classificação:
+`acceptable as temporary DEV visualization` e `requires custom renderer/custom
+animation bridge` para produção. GeckoLib não foi adotado por conveniência.
+
+### Revised classification
+
+| Capability | Classification | Phase 1.1 status |
+|---|---|---|
+| custom entity shoot/aim | PUBLIC_API + TaCZ LivingEntity mixin | runtime proven |
+| actual-ammo reload | PUBLIC_API + FORGE_EVENT + ITEM_HANDLER | runtime proven |
+| gun/ammo/attachment persistence | vanilla entity NBT + public stack data | reopen proven |
+| accuracy per stack | PUBLIC experimental event/property | quantitative runtime proven |
+| damage per shooter | FORGE_EVENT | quantitative runtime proven |
+| suppressor detection | PUBLIC_API | runtime proven |
+| production mob animation | custom work | not solved |

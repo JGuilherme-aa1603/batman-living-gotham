@@ -66,3 +66,21 @@ contraptions Create complexas estão válidas.
 **Integração programática comprovada.** Living Gotham consegue realizar um
 paste sem ação manual do usuário e sem internals do WorldEdit. Manter WorldEdit
 como dependência de runtime para a futura automação estrutural.
+
+## Phase 1.1 save/reopen persistence
+
+**RUNTIME, três execuções separadas**, na cópia
+`runtime/forge/saves/Los Perrito Phase 1.1 DEV`:
+
+1. paste em `-1137 84 -829`, oito mudanças e oito estados imediatamente
+   verificados;
+2. save/close/reopen: os mesmos oito estados foram lidos programaticamente e
+   corresponderam exatamente ao padrão ouro/concreto preto/vidro;
+3. os oito blocos foram removidos para ar, salvos, o mundo foi fechado e aberto
+   novamente; os oito `minecraft:air` foram confirmados.
+
+Coordenada e estágio foram persistidos em `SavedData` autoral apenas para que a
+nova execução soubesse onde ler. A prova dos blocos veio do `ServerLevel`, não
+do estado em memória anterior. O volume inicial era todo ar; assim a limpeza
+não restaurou estados presumidos. A baseline não foi aberta e seus hashes
+permaneceram inalterados.
