@@ -2,6 +2,12 @@
 
 Data da inspeção: 2026-09-04
 
+> **Atualização da Fase 1 (2026-09-05):** um userdev Forge 47.4.10 em Java
+> 17.0.19 carregou Living Gotham 0.0.1-probe, Batman Mod 1.0.9, Create
+> 6.0.8-289, WorldEdit 7.2.15+6463-5ca4dff e TaCZ 1.1.8-hotfix na mesma cópia
+> DEV. Os testes programáticos estão detalhados nos relatórios específicos de
+> Yo Fadda, WorldEdit, Create, TaCZ e baseline.
+
 ## Instância encontrada
 
 `Instancia/` é um symlink para a pasta `minecraft` da instância Prism Launcher

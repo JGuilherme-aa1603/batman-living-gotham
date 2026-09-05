@@ -2,6 +2,13 @@
 
 Data do teste: 2026-09-04
 
+> **Nota de baseline (2026-09-05):** este relatório registra o teste histórico
+> feito antes da conversão manual do usuário. O mundo atualmente presente em
+> `LosPerrito2.0/Los Perrito` é Minecraft 1.20.1, DataVersion 3465, e não deve
+> ser reconvertido. Consulte `WORLD_BASELINE_REPORT.md`, que substitui as
+> conclusões de versão 1.19.2 abaixo. As conclusões sobre Amulet 1.9.45,
+> `session.lock` e uso obrigatório de cópias continuam válidas.
+
 ## Ambiente e instalação
 
 - Python global: **3.14.7**.
@@ -94,8 +101,9 @@ tem limite padrão de 256 chunks e recusa qualquer path resolvido sob
   falhou e o destrutor emitiu um segundo `AttributeError` por objeto parcialmente
   inicializado. O inspector define cache temporário por padrão.
 - Python 3.14 não é uma base segura para Amulet 1.9.45; manter Python 3.12 isolado.
-- O mapa está salvo como 1.19.2, enquanto o runtime alvo é Forge 1.20.1. Qualquer
-  upgrade deve ocorrer numa cópia e ser validado com os mods reais.
+- Na data deste teste, a cópia então disponível estava em 1.19.2. O usuário fez
+  depois a conversão manual; a baseline atual é 1.20.1/DataVersion 3465 e não
+  deve passar por novo upgrade automático.
 - Block entities comuns foram legíveis, mas isso não prova round-trip seguro de
   block entities ou contraptions do Create. Não fabricar NBT complexo offline.
 - Métricas de tempo são uma amostra nesta máquina, não benchmark formal.
