@@ -14,6 +14,9 @@ existente); Living Gotham integra-se a ele sem substituí-lo.
   observáveis, testáveis e reversíveis.
 - Valide mods, APIs, registries, eventos, NBT e comportamento no runtime real.
   Nome de classe, documentação ou hipótese não prova uma integração.
+- Se uma etapa exigir intervenção manual do usuário, pause o trabalho nesse
+  ponto e avise explicitamente; não presuma que a ação foi realizada nem siga
+  para etapas que dependam dela.
 
 ## Dados locais e proteção do mapa
 
@@ -150,6 +153,22 @@ uv pip install --python .tooling/amulet-venv/bin/python \
   --output-dir /tmp/living-gotham-inspection
 ```
 
+O City Index também opera exclusivamente sobre cópia de análise. O SQLite,
+caches, mapas e tiles canônicos ficam em `generated/` e não entram no Git:
+
+```bash
+scripts/create-dev-world 'runtime/analysis/Los Perrito CITY INDEX'
+.tooling/amulet-venv/bin/python tools/city-index/city-index scan \
+  'runtime/analysis/Los Perrito CITY INDEX' \
+  --output generated/city-index \
+  --source-level-hash 8d79d69541005bda1118b1f07928e9358a8b5d340e251e244d766670d861cea0
+.tooling/amulet-venv/bin/python tools/city-index/city-index stats \
+  generated/city-index/city_index.sqlite
+```
+
+Não trate rankings `wayne_manor`, `gcpd`, `harbor` ou `ace_chemicals` como
+identidades confirmadas. Eles permanecem inferências até revisão no mundo.
+
 Diagnóstico local útil:
 
 ```bash
@@ -170,5 +189,6 @@ git status --ignored
 - `docs/research/WORLDEDIT_INTEGRATION_REPORT.md`
 - `docs/research/CREATE_INTEGRATION_REPORT.md`
 - `docs/research/TACZ_INTEGRATION_REPORT.md`
+- `docs/research/CITY_INDEX_REPORT.md`
 
 Atualize esses relatórios quando versões, runtime ou evidência real mudarem.
