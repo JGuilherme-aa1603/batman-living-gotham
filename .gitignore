@@ -6,6 +6,11 @@ Instancia
 LosPerrito2.0/
 reference/
 runtime/
+generated/
+
+# Offline City Index outputs (canonical DB, caches, maps and tiles)
+city_index.sqlite*
+tools/city-index/generated/
 
 # Minecraft saves / regions
 **/saves/
